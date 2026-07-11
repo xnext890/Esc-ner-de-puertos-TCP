@@ -1,0 +1,415 @@
+/* =========================================================================
+   Port Scanner — hoja de estilos
+   Estética: instrumento de red / consola de señal.
+   - Fondo azul-pizarra profundo (no negro puro).
+   - Ámbar de fósforo como color de "señal": un puerto abierto se ilumina.
+   - Cian para el estado de escaneo activo.
+   ========================================================================= */
+
+:root {
+  --bg:        #0b0f1a;   /* fondo base, navy casi negro          */
+  --panel:     #131b2d;   /* superficies elevadas                 */
+  --panel-2:   #0f1626;   /* superficies hundidas (inputs)        */
+  --border:    #24304a;   /* líneas y bordes                      */
+  --border-hi: #33436a;   /* borde en foco/hover                  */
+
+  --ink:       #e7edf8;   /* texto principal                      */
+  --ink-mut:   #8a97b2;   /* texto secundario                     */
+  --ink-dim:   #59668a;   /* texto terciario                      */
+
+  --signal:    #f5b13d;   /* ámbar de fósforo: puerto abierto     */
+  --signal-glow: rgba(245, 177, 61, 0.28);
+  --active:    #45d6e6;   /* cian: escaneo en curso               */
+  --active-glow: rgba(69, 214, 230, 0.20);
+  --alert:     #e5595f;   /* rojo apagado: errores                */
+
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --sans: "Space Grotesk", system-ui, -apple-system, Segoe UI, sans-serif;
+
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+html { scrollbar-color: var(--border-hi) transparent; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--sans);
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 78% -8%, rgba(69,214,230,0.06), transparent 60%),
+    radial-gradient(900px 500px at 10% 108%, rgba(245,177,61,0.05), transparent 55%),
+    var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Barra de barrido tenue que cruza toda la página: guiño de "señal viva". */
+.scanline {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(69,214,230,0.035), transparent);
+  height: 140px;
+  animation: drift 9s linear infinite;
+  z-index: 0;
+}
+@keyframes drift {
+  0%   { transform: translateY(-160px); }
+  100% { transform: translateY(100vh); }
+}
+
+/* ------------------------------------------------------------------ */
+/* Cabecera                                                           */
+/* ------------------------------------------------------------------ */
+.masthead {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.6rem clamp(1rem, 4vw, 3rem);
+  border-bottom: 1px solid var(--border);
+}
+
+.masthead__id { display: flex; align-items: center; gap: 0.9rem; }
+
+.masthead h1 {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.masthead h1 .proto {
+  color: var(--signal);
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-left: 0.4rem;
+  letter-spacing: 0.04em;
+}
+.masthead__sub {
+  margin: 0.2rem 0 0;
+  color: var(--ink-mut);
+  font-size: 0.82rem;
+}
+
+/* Indicador luminoso de estado. */
+.dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--ink-dim);
+  box-shadow: 0 0 0 4px rgba(255,255,255,0.03);
+  flex-shrink: 0;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.dot[data-state="running"] {
+  background: var(--active);
+  box-shadow: 0 0 12px var(--active-glow), 0 0 0 4px var(--active-glow);
+  animation: pulse 1.1s ease-in-out infinite;
+}
+.dot[data-state="done"]    { background: var(--signal); box-shadow: 0 0 12px var(--signal-glow); }
+.dot[data-state="error"]   { background: var(--alert); box-shadow: 0 0 12px rgba(229,89,95,0.4); }
+@keyframes pulse { 50% { opacity: 0.45; } }
+
+.readout {
+  font-family: var(--mono);
+  text-align: right;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.9rem;
+  background: var(--panel-2);
+}
+.readout__label {
+  display: block;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--ink-dim);
+}
+.readout__value { font-size: 0.92rem; color: var(--active); }
+
+/* ------------------------------------------------------------------ */
+/* Rejilla principal                                                  */
+/* ------------------------------------------------------------------ */
+.grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) 1fr;
+  gap: clamp(1rem, 2.5vw, 2rem);
+  padding: clamp(1rem, 3vw, 2rem) clamp(1rem, 4vw, 3rem);
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Panel de control                                                   */
+/* ------------------------------------------------------------------ */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: sticky;
+  top: 1.5rem;
+}
+
+.field { display: flex; flex-direction: column; gap: 0.5rem; }
+.field--split {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ink-mut);
+  font-weight: 600;
+}
+
+input[type="text"],
+input[type="number"] {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input[type="text"]::placeholder { color: var(--ink-dim); }
+input:focus {
+  outline: none;
+  border-color: var(--border-hi);
+  box-shadow: 0 0 0 3px var(--active-glow);
+}
+
+.hint { margin: 0; font-size: 0.72rem; color: var(--ink-dim); }
+
+/* Chips de presets de puertos. */
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.15rem; }
+.chip {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-mut);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip:hover { color: var(--ink); border-color: var(--border-hi); }
+.chip.is-active {
+  color: var(--bg);
+  background: var(--signal);
+  border-color: var(--signal);
+  font-weight: 600;
+}
+
+/* Slider de concurrencia. */
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--active);
+  margin-top: 0.35rem;
+}
+.mono { font-family: var(--mono); color: var(--active); }
+
+/* Botones de acción. */
+.actions { display: flex; gap: 0.6rem; }
+.btn {
+  flex: 1;
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.08s, filter 0.15s, opacity 0.15s;
+}
+.btn:active { transform: translateY(1px); }
+.btn--go {
+  background: var(--signal);
+  color: #241a06;
+  box-shadow: 0 4px 18px var(--signal-glow);
+}
+.btn--go:hover { filter: brightness(1.06); }
+.btn--stop {
+  background: transparent;
+  color: var(--ink-mut);
+  border-color: var(--border);
+}
+.btn--stop:hover:not(:disabled) { color: var(--alert); border-color: var(--alert); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.disclaimer {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--ink-dim);
+  border-top: 1px dashed var(--border);
+  padding-top: 0.9rem;
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------------------------ */
+/* Resultados                                                         */
+/* ------------------------------------------------------------------ */
+.results {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Barra de barrido/progreso. */
+.sweep {
+  padding: 1rem 1.3rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+.sweep__bar {
+  height: 4px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--active), var(--signal));
+  width: 0%;
+  transition: width 0.35s ease;
+  box-shadow: 0 0 10px var(--active-glow);
+}
+.sweep__bar.is-scanning {
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer { to { background-position: 200% 0; } }
+.sweep__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--ink-mut);
+}
+.sweep__meta .mono { color: var(--ink); }
+
+/* Contadores. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+.stat {
+  padding: 0.9rem 1rem;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.stat:last-child { border-right: none; }
+.stat__num {
+  display: block;
+  font-family: var(--mono);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.stat__lbl {
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-dim);
+}
+.stat--open .stat__num { color: var(--signal); }
+
+/* Tabla de puertos. */
+.table-wrap { position: relative; flex: 1; overflow-x: auto; }
+.ports {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+.ports thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel-2);
+  text-align: left;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ink-dim);
+  font-weight: 600;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.ports th.num, .ports td.num { text-align: right; }
+.ports tbody td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid rgba(36, 48, 74, 0.5);
+  font-family: var(--mono);
+  color: var(--ink);
+  vertical-align: top;
+}
+.ports tbody tr {
+  animation: light-up 0.5s ease;
+}
+@keyframes light-up {
+  from { background: var(--signal-glow); }
+  to   { background: transparent; }
+}
+.port-num { color: var(--signal); font-weight: 600; }
+.svc { color: var(--active); }
+.latency { color: var(--ink-mut); }
+.banner {
+  color: var(--ink-mut);
+  max-width: 340px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.8rem;
+}
+.banner:empty::before { content: "—"; color: var(--ink-dim); }
+
+/* Estado vacío. */
+.empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.4rem;
+  padding: 2rem;
+  color: var(--ink-mut);
+}
+.empty p { margin: 0; }
+.empty__sub { font-size: 0.82rem; color: var(--ink-dim); max-width: 34ch; }
+.empty.is-hidden { display: none; }
+
+/* Pie. */
+.foot {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 1.4rem;
+  font-size: 0.75rem;
+  color: var(--ink-dim);
+  border-top: 1px solid var(--border);
+}
+.foot .mono { color: var(--ink-mut); }
+
+/* Accesibilidad: respetar reducción de movimiento. */
+@media (prefers-reduced-motion: reduce) {
+  .scanline, .dot, .sweep__bar.is-scanning, .ports tbody tr { animation: none; }
+}
